@@ -1,0 +1,57 @@
+package com.example.easychat_server.controller;
+
+import com.example.easychat_server.dto.LoginDto;
+import com.example.easychat_server.model.User;
+import com.example.easychat_server.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.HashMap;
+import java.util.Map;
+
+@CrossOrigin(origins = "*") // 允许跨域请求
+@RestController // 声明这是一个 RESTful风格的 Controller，所有方法默认返回 JSON
+@RequestMapping("/api/user") // 所有在这个类里的请求路径都以 /api/user 开头
+public class UserController {
+
+    @Autowired
+    private UserService userService;
+
+    // POST /api/user/register
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody User user) {
+        try {
+            User registeredUser = userService.register(user);
+            // 注册成功后，不应该返回密码等敏感信息
+            registeredUser.setPassword(null);
+            return ResponseEntity.ok(registeredUser);
+        } catch (IllegalArgumentException e) {
+            // 如果 service 层抛出了异常（比如用户名已存在），则返回一个错误响应
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // POST /api/user/login
+    @PostMapping("/login")
+    public ResponseEntity<?> loginUser(@RequestBody LoginDto loginDto) {
+        try {
+            String token = userService.login(loginDto.getUsername(), loginDto.getPassword());
+
+            User user = userService.findByUsername(loginDto.getUsername());
+
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("token", token);
+
+            Map<String, Object> userInfo = new HashMap<>();
+            userInfo.put("id", user.getId());
+            userInfo.put("username", user.getUsername());
+            userInfo.put("nickname", user.getNickname());
+            userInfo.put("avatar", user.getAvatar());
+            responseData.put("userInfo", userInfo);
+
+            return ResponseEntity.ok(responseData);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(401).body(e.getMessage()); // 401 Unauthorized
+        }
+    }
+}
