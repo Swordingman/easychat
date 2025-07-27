@@ -11,15 +11,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class AuthHandshakeInterceptor implements HandshakeInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(AuthHandshakeInterceptor.class);
-
-    @Autowired
-    private JwtUtil jwtUtil;
 
     /**
      * 在握手之前执行，用于验证用户身份
@@ -29,26 +28,38 @@ public class AuthHandshakeInterceptor implements HandshakeInterceptor {
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
 
-        // 从请求 URI 的查询参数中获取 token
-        // 例如 ws://localhost:8080/ws/chat?token=xxx
         String query = request.getURI().getQuery();
-        if (query != null && query.startsWith("token=")) {
-            String token = query.substring("token=".length());
 
-            if (jwtUtil.validateToken(token)) {
-                Claims claims = jwtUtil.getClaimsFromToken(token);
-                Long userId = claims.get("userId", Long.class);
-
-                // 将 userId 放入 WebSocketSession 的 attributes 中，以便后续处理器使用
-                attributes.put("userId", userId);
-                log.info("WebSocket 握手成功，用户ID: {}", userId);
-                return true;
-            }
+        // 防止 null pointer
+        if (query == null || query.isEmpty()) {
+            log.warn("WebSocket 握手失败：没有 query 参数");
+            return false;
         }
 
+        Map<String, String> queryParams = Arrays.stream(query.split("&"))
+                .map(s -> s.split("=", 2))
+                .filter(pair -> pair.length == 2)
+                .collect(Collectors.toMap(pair -> pair[0], pair -> pair[1]));
+
+        String token = queryParams.get("token");
+
+        try {
+            if (token != null && JwtUtil.validateToken(token)) {
+                Claims claims = JwtUtil.getClaimsFromToken(token);
+                Long userId = claims.get("userId", Long.class);
+                attributes.put("userId", userId);
+                log.info("WebSocket 握手成功，用户 ID：{}", userId);
+                return true;
+            }
+        } catch (Exception e) {
+            log.error("WebSocket 握手失败，无效或过期的 Token：{}", e.getMessage());
+        }
+
+        log.info("尝试握手: URI={}, headers={}", request.getURI(), request.getHeaders());
         log.warn("WebSocket 握手失败，无效的 Token 或缺少 Token。");
-        return false; // 验证失败，中断连接
+        return false;
     }
+
 
     /**
      * 在握手之后执行

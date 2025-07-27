@@ -1,5 +1,6 @@
 package com.example.easychat_server.controller;
 
+import com.example.easychat_server.dto.ContactDto;
 import com.example.easychat_server.model.User;
 import com.example.easychat_server.service.ContactService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,14 +18,10 @@ public class ContactController {
     @Autowired
     private ContactService contactService;
 
-    // 我们需要一种方式来获取当前登录用户的ID，最标准的方式是从JWT Filter设置的上下文中获取
-    // 为了简化，我们暂时先不写 JWT Filter，而是在开发阶段通过参数传递
-    // 警告：这只是临时做法！生产环境不安全！
+    // 将 getContactList 的返回类型改为 ResponseEntity<List<ContactDto>>
     @GetMapping("/list")
-    public ResponseEntity<?> getContactList(@RequestParam Long userId) {
-        List<User> contacts = contactService.getContacts(userId);
-        // 过滤掉密码等敏感信息
-        contacts.forEach(user -> user.setPassword(null));
+    public ResponseEntity<List<ContactDto>> getContactList(@RequestParam Long userId) {
+        List<ContactDto> contacts = contactService.getContactsWithLastMessage(userId);
         return ResponseEntity.ok(contacts);
     }
 }

@@ -1,5 +1,6 @@
 import { useUserStore } from '../stores/user'
 import { ElMessage, ElNotification } from 'element-plus'
+import { useChatStore } from '@renderer/stores/chat'
 
 let ws: WebSocket | null = null
 let heartBeatTimer: number | null = null
@@ -14,6 +15,7 @@ const wsUrl = 'ws://localhost:8080/ws/chat'
  */
 export function connectWebSocket() {
     const userStore = useUserStore()
+
 
     // 1. 检查是否已登录，以及是否已存在连接
     if (!userStore.isLoggedIn || ws) {
@@ -30,6 +32,10 @@ export function connectWebSocket() {
 
     // 3. 拼接带 token 的 URL 并创建 WebSocket 实例
     const fullUrl = `${wsUrl}?token=${token}`
+
+    console.log("【前端】准备连接 WebSocket，完整 URL:", fullUrl);
+    console.log("【前端】发送的 Token:", token);
+
     ws = new WebSocket(fullUrl)
 
     // 4. 设置事件监听
@@ -69,21 +75,24 @@ function handleOpen() {
 }
 
 function handleMessage(event: MessageEvent) {
-    const message = event.data
-    console.log('收到服务器消息:', message)
+    const messageData = JSON.parse(event.data)
+    console.log('收到服务器消息:', messageData)
 
-    // 在这里根据消息内容进行处理
-    // 例如，如果是心跳响应，则可以忽略
-    if (message === 'pong') {
-        return;
+    const chatStore = useChatStore()
+
+    switch(messageData.type || messageData.messageType) {
+        case 'HEARTBEAT_PONG':
+            console.log('收到心跳响应，心跳正常。')
+            break;
+        case 'ERROR':
+            console.error('收到错误消息:', messageData.content)
+            ElMessage.error(messageData.content || '服务器发生错误，请稍后再试。')
+            break;
+        case 'TEXT':
+            default:
+                chatStore.addMessage(messageData)
+                break;
     }
-
-    // TODO: 如果是聊天消息，则需要提交到 chatStore
-    ElNotification({
-        title: '收到新消息',
-        message: message,
-        type: 'info'
-    })
 }
 
 function handleClose(event: CloseEvent) {

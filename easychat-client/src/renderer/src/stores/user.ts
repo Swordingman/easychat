@@ -1,7 +1,6 @@
-// src/renderer/src/stores/user.ts
-
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { jwtDecode } from 'jwt-decode'
 
 // 定义 userInfo 的接口类型，增强代码健壮性
 interface UserInfo {
@@ -29,9 +28,33 @@ export const useUserStore = defineStore('user', () => {
     }
 
     function logout() {
-        console.log('Logging out')
+        console.log('正在登出...')
         token.value = null
         userInfo.value = null
+    }
+
+    function checkTokenValidity(): boolean {
+        if (!token.value) {
+            return false
+        }
+        try {
+            const decoded: { exp: number } = jwtDecode(token.value);
+            const nowInSeconds = Date.now() / 1000;
+
+            if (decoded.exp < nowInSeconds) {
+                console.warn('Token 已过期');
+                return false;
+            }
+            return true;
+        } catch(error) {
+            console.error('无效的 token', error);
+            return false;
+        }
+    }
+
+    function handleInvalidToken() {
+        console.error('Token 无效，请重新登录');
+        logout();
     }
 
     // 必须返回 state、getters 和 actions
@@ -40,9 +63,13 @@ export const useUserStore = defineStore('user', () => {
         userInfo,
         isLoggedIn,
         setLoginInfo,
-        logout
+        logout,
+        checkTokenValidity,
+        handleInvalidToken
     }
 },
 {
-    persist: true // 开启持久化存储
+    persist: {
+        key: 'user-v2'
+    } // 开启持久化存储
 })

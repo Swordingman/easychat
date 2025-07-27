@@ -17,9 +17,6 @@ public class UserService {
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
     public User register(User user) {
         // 检查用户名是否已存在
         if (userRepository.findByUsername(user.getUsername()).isPresent()) {
@@ -54,7 +51,7 @@ public class UserService {
         }
 
         // 登录成功,这里将生成并返回 JWT Token。
-        return jwtUtil.generateToken(user.getUsername(), user.getId());
+        return JwtUtil.generateToken(user.getUsername(), user.getId());
     }
 
     public User findByUsername(String username) {

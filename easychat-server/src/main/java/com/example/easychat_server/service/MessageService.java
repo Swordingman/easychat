@@ -5,6 +5,8 @@ import com.example.easychat_server.repository.MessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class MessageService {
 
@@ -13,5 +15,8 @@ public class MessageService {
 
     public Message saveMessage(Message message) {
         return messageRepository.save(message);
+    }
+    public List<Message> getConversation(Long userId1, Long userId2) {
+        return messageRepository.findConversationMessages(userId1, userId2);
     }
 }

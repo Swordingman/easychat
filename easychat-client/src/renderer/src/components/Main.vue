@@ -1,54 +1,61 @@
 <template>
-    <div class="main-container">
-        <h1>欢迎, {{ userStore.userInfo?.nickname }}!</h1>
-        <p>你已成功登录 EasyChat!</p>
-        <p>你的用户ID是: {{ userStore.userInfo?.id }}</p>
-
-        <div class="chat-container">
-            <el-input placeholder="请输入聊天内容" v-model="testMessage" @keyup.enter="handleSendMessage"></el-input>
-            <el-button type="primary" @click="handleSendMessage">发送</el-button>
-        </div>
-        <el-button type="danger" @click="handleLogout">退出登录</el-button>
+    <div class="common-layout">
+        <el-container class="main-container">
+            <!-- 最左侧导航 -->
+            <el-aside width="50px">
+                <SideBar />
+            </el-aside>
+            <!-- 联系人/会话列表 -->
+            <el-aside width="250px">
+                <ContactList />
+            </el-aside>
+            <!-- 主聊天窗口 -->
+            <el-main>
+                <ChatWindow />
+            </el-main>
+        </el-container>
     </div>
 </template>
 
 <script setup lang="ts">
-import { useUserStore } from '../stores/user'
-import { ref } from 'vue'
-import { sendMessage } from '../services/websocket'
+import { onMounted } from 'vue';
+import axios from 'axios';
+import SideBar from './SideBar.vue';
+import ContactList from './ContactList.vue';
+import ChatWindow from './ChatWindow.vue';
+import { useChatStore } from '../stores/chat';
+import { useUserStore } from '../stores/user';
 
-const testMessage = ref('')
-const userStore = useUserStore()
+const chatStore = useChatStore();
+const userStore = useUserStore();
 
-function handleLogout() {
-    userStore.logout()
-}
-
-function handleSendMessage() {
-    if (!testMessage.value.trim()) return
-    const messagePayload = {
-        type: 'PRIVATE_CHAT',
-        receiverId: 3,
-        content: testMessage.value
+async function fetchContacts() {
+    if (!userStore.userInfo) return;
+    try {
+        // 调用我们之前在后端写的获取联系人列表API
+        const response = await axios.get('/api/contact/list', {
+            params: {
+                userId: userStore.userInfo.id
+            }
+        });
+        // 将获取到的联系人列表存入 pinia
+        chatStore.setContacts(response.data);
+    } catch (error) {
+        console.error('获取联系人列表失败:', error);
     }
-    sendMessage(messagePayload)
-    testMessage.value = ''
 }
+
+// 在组件挂载后，立即获取联系人列表
+onMounted(() => {
+    fetchContacts();
+});
 </script>
 
 <style scoped>
 .main-container {
-    padding: 20px;
-    text-align: center;
+    height: 100vh; /* 占满整个视窗高度 */
 }
-.message-tester {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin: 20px auto;
-    max-width: 500px;
-}
-.logout-btn {
-    margin-top: 20px;
+.el-main {
+    padding: 0; /* 移除 main区域的默认内边距 */
 }
 </style>

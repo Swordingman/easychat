@@ -9,7 +9,7 @@ import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
 @Configuration
-@EnableWebSocket // 开启 WebSocket 支持
+@EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
     @Autowired
