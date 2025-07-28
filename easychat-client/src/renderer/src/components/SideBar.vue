@@ -1,7 +1,7 @@
 <template>
     <div class="sidebar-container">
-        <div class="user-avatar">
-            <el-avatar :size="36" :src="userStore.userInfo?.avatar" />
+        <div class="user-avatar" @click="openProfileDialog">
+            <el-avatar :size="36" :src="userStore.userInfo?.fullAvatarUrl" />
         </div>
         <div class="nav-icons">
             <div class="nav-icon active">
@@ -31,6 +31,9 @@
                 </div>
             </el-popover>
         </div>
+        <UserProfileDialog
+            ref="profileDialogRef"
+        />
     </div>
 </template>
 
@@ -38,9 +41,16 @@
 import { useUserStore } from '../stores/user';
 import { useChatStore } from '@renderer/stores/chat'
 import { ElMessageBox } from 'element-plus';
+import { ref } from 'vue';
+import UserProfileDialog from './UserProfileDialog.vue';
 
 const chatStore = useChatStore();
 const userStore = useUserStore();
+const profileDialogRef = ref<InstanceType<typeof UserProfileDialog> | null>(null);
+
+function openProfileDialog() {
+    profileDialogRef.value?.open();
+}
 
 function handleLogout() {
     ElMessageBox.confirm(
@@ -108,5 +118,13 @@ function handleLogout() {
 }
 .menu-item .el-icon {
     margin-right: 8px;
+}
+
+.user-avatar {
+    cursor: pointer; /* 增加手型指针，提示用户可以点击 */
+    transition: transform 0.2s;
+}
+.user-avatar:hover {
+    transform: scale(1.1);
 }
 </style>

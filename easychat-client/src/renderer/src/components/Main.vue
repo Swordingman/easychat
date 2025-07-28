@@ -19,12 +19,12 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import axios from 'axios';
 import SideBar from './SideBar.vue';
 import ContactList from './ContactList.vue';
 import ChatWindow from './ChatWindow.vue';
 import { useChatStore } from '../stores/chat';
 import { useUserStore } from '../stores/user';
+import apiClient from '../services/api';
 
 const chatStore = useChatStore();
 const userStore = useUserStore();
@@ -33,7 +33,7 @@ async function fetchContacts() {
     if (!userStore.userInfo) return;
     try {
         // 调用我们之前在后端写的获取联系人列表API
-        const response = await axios.get('/api/contact/list', {
+        const response = await apiClient.get('/api/contact/list', {
             params: {
                 userId: userStore.userInfo.id
             }

@@ -26,7 +26,7 @@
                             <!-- 自己的消息 -->
                             <div v-else class="message-item self">
                                 <div class="message-content">{{ message.content }}</div>
-                                <el-avatar :size="36" :src="userStore.userInfo.avatar" class="message-avatar" />
+                                <el-avatar :size="36" :src="userStore.userInfo.fullAvatarUrl" class="message-avatar" />
                             </div>
                         </div>
                     </div>

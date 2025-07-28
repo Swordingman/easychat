@@ -44,6 +44,28 @@ public class User {
     public User() {
     }
 
+    /**
+     * 这个方法将在 User 对象被 Jackson 序列化为 JSON 时被调用。
+     * 它会生成一个名为 "fullAvatarUrl" 的新字段在 JSON 中。
+     * 我们在这里将相对路径拼接成完整的 URL。
+     * @return 完整的头像URL
+     */
+    public String getFullAvatarUrl() {
+        // 如果 avatar 字段本身已经是 http 开头，则直接返回
+        if (this.avatar != null && this.avatar.startsWith("http")) {
+            return this.avatar;
+        }
+        // 如果 avatar 是相对路径，则拼接上服务器地址
+        if (this.avatar != null && !this.avatar.isEmpty()) {
+            // 在普通的Bean中获取当前请求的地址会比较复杂，我们先用一个硬编码的地址
+            // 后续可以优化为从配置文件读取
+            String baseUrl = "http://localhost:8080";
+            return baseUrl + this.avatar;
+        }
+        // 如果没有头像，可以返回一个默认头像的 URL
+        return "https://i.pravatar.cc/150?u=" + this.username;
+    }
+
     // 我们可以添加一个方便的构造函数用于注册
     public User(String username, String password, String nickname) {
         this.username = username;

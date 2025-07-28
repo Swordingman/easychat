@@ -60,6 +60,7 @@ import { ref, reactive } from 'vue'
 import axios from 'axios'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useUserStore } from '../stores/user'
+import apiClient from '../services/api'
 
 const loginFormRef = ref<FormInstance>()
 const registerFormRef = ref<FormInstance>()
@@ -110,7 +111,7 @@ const handleLogin = async () => {
             console.log('登录表单验证通过！');
             try {
                 // 发送 POST 请求到后端登录 API
-                const response = await axios.post('/api/user/login', loginForm)
+                const response = await apiClient.post('/api/user/login', loginForm)
 
                 // 登录成功
                 console.log('登录成功:', response.data)

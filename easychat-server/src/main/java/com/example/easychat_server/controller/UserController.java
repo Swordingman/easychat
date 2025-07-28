@@ -1,17 +1,24 @@
 package com.example.easychat_server.controller;
 
 import com.example.easychat_server.dto.LoginDto;
+import com.example.easychat_server.dto.UserUpdateDto;
 import com.example.easychat_server.model.User;
 import com.example.easychat_server.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
+import static jdk.nashorn.internal.runtime.regexp.joni.Config.log;
+
 @RestController // 声明这是一个 RESTful风格的 Controller，所有方法默认返回 JSON
 @RequestMapping("/api/user") // 所有在这个类里的请求路径都以 /api/user 开头
 public class UserController {
+
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
     private UserService userService;
@@ -51,6 +58,18 @@ public class UserController {
             return ResponseEntity.ok(responseData);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(401).body(e.getMessage()); // 401 Unauthorized
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UserUpdateDto userUpdateDto) {
+        log.info("===> 请求已进入 updateUser(Long id, ...) 方法,收到的id是: {}", id);
+        try {
+            User updatedUser = userService.updateUser(id, userUpdateDto);
+            updatedUser.setPassword(null); // 注册成功后，不应该返回密码等敏感信息
+            return ResponseEntity.ok(updatedUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { useUserStore } from '@renderer/stores/user'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import apiClient from '../services/api'
 
 // 定义 Contact 和 Message 的接口类型
 interface Contact {
@@ -74,7 +74,7 @@ export const useChatStore = defineStore('chat', () => {
         if (!userStore.userInfo) return;
 
         try {
-            const response = await axios.get('/api/message/conversation', {
+            const response = await apiClient.get('/api/message/conversation', {
                 params: {
                     userId1: userStore.userInfo.id,
                     userId2: contactId,
