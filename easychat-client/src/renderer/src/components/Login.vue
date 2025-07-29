@@ -145,7 +145,7 @@ const handleRegister = async () => {
             console.log('注册表单验证通过！');
             try {
                 // 发送 POST 请求到后端注册 API
-                const response = await axios.post('/api/user/register', registerForm)
+                const response = await apiClient.post('/api/user/register', registerForm)
 
                 // 注册成功
                 console.log('注册成功:', response.data)

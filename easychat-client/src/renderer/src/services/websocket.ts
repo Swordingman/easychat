@@ -8,7 +8,7 @@ const heartBeatInterval = 30 * 1000 // 30秒心跳一次
 
 // websocket 服务地址
 // 注意：这里是 ws:// 或 wss://, 而不是 http:// 或 https://
-const wsUrl = 'ws://localhost:8080/ws/chat'
+const wsUrl = 'wss://api.chirpchump.xyz/ws/chat'
 
 /**
  * 连接 WebSocket

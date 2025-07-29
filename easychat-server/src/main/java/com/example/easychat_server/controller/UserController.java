@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-import static jdk.nashorn.internal.runtime.regexp.joni.Config.log;
-
 @RestController // 声明这是一个 RESTful风格的 Controller，所有方法默认返回 JSON
 @RequestMapping("/api/user") // 所有在这个类里的请求路径都以 /api/user 开头
 public class UserController {
