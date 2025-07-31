@@ -9,6 +9,7 @@ interface UserInfo {
     nickname: string;
     avatar: string;
     fullAvatarUrl: string;
+    easychatId: string;
 }
 
 // 使用 setup-style 的方式定义 store，这是 Vue 3 和 TS 推荐的写法

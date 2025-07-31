@@ -11,6 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Random;
+
 @Service
 public class UserService {
     private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
@@ -22,12 +25,19 @@ public class UserService {
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
+    @Transactional
     public User register(User user) {
         // 检查用户名是否已存在
         if (userRepository.findByUsername(user.getUsername()).isPresent()) {
             // 如果存在，可以抛出一个自定义异常，让 Controller 层捕获
             throw new IllegalArgumentException("用户名 " + user.getUsername() + " 已被注册！");
         }
+
+        String easychatId;
+        do {
+            easychatId = String.valueOf(100000 + new Random().nextInt(900000));
+        } while (userRepository.findByEasychatId(easychatId).isPresent());
+        user.setEasychatId(easychatId);
 
         // 重要：对密码进行加密存储
         // 永远不要在数据库中存储明文密码
@@ -44,23 +54,28 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public String login(String username, String password) {
+    public String login(String easychatId, String password) {
         // 查找用户
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("用户不存在或密码错误"));
+        User user = userRepository.findByEasychatId(easychatId)
+                .orElseThrow(() -> new IllegalArgumentException("账号或密码错误"));
 
         // 验证密码
         // passwordEncoder.matches 会将传入的明文密码加密后与数据库中的密文密码进行比对
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new IllegalArgumentException("用户不存在或密码错误");
+            throw new IllegalArgumentException("账号或密码错误");
         }
 
         // 登录成功,这里将生成并返回 JWT Token。
-        return JwtUtil.generateToken(user.getUsername(), user.getId());
+        return JwtUtil.generateToken(user.getEasychatId(), user.getId());
     }
 
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+    }
+
+    public User findByEasychatId(String easychatId) {
+        return userRepository.findByEasychatId(easychatId)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
     }
 
@@ -87,21 +102,19 @@ public class UserService {
         // 3. 验证并更新头像
         // 如果 DTO 中有名为 "avatar" 的字段传来...
         if (userUpdateDto.getAvatar() != null) {
-            // ...我们甚至可以简单检查一下它是不是一个合法的路径格式
-            if (userUpdateDto.getAvatar().startsWith("/uploads/")) {
-                user.setAvatar(userUpdateDto.getAvatar());
-                log.info("用户 {} 的头像已更新为: {}", userId, user.getAvatar());
-            } else if (userUpdateDto.getAvatar().isEmpty()) {
-                // 如果传来的是空字符串，可以选择清空头像或保持不变
-                // 我们选择保持不变，更加安全
-                log.warn("尝试将用户 {} 的头像设置为空字符串，操作被忽略。", userId);
-            } else {
-                log.warn("为用户 {} 提供了无效的头像路径: {}，操作被忽略。", userId, userUpdateDto.getAvatar());
-            }
+            // 我们现在信任前端传来的是完整的、正确的URL
+            user.setAvatar(userUpdateDto.getAvatar());
+            log.info("用户 {} 的头像已更新为: {}", userId, user.getAvatar());
         }
+
         // 如果前端根本没传 avatar 字段，这里也什么都不做。
 
         // 4. 保存更改
         return userRepository.save(user);
     }
+
+    public List<User> searchUsers(String query, Long selfId) {
+        return userRepository.findByEasychatIdContainingOrNicknameContainingAndIdNot(query, query, selfId);
+    }
+
 }

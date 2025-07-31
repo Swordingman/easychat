@@ -1,15 +1,17 @@
 <template>
     <div class="common-layout">
         <el-container class="main-container">
-            <!-- 最左侧导航 -->
             <el-aside width="50px">
                 <SideBar />
             </el-aside>
-            <!-- 联系人/会话列表 -->
+
+            <!-- 中间的主面板 -->
             <el-aside width="250px">
-                <ContactList />
+                <!-- 根据 chatStore.activeView 动态切换组件 -->
+                <SessionList v-if="chatStore.activeView === 'chat'" />
+                <AddressBook v-else-if="chatStore.activeView === 'contacts'" />
             </el-aside>
-            <!-- 主聊天窗口 -->
+
             <el-main>
                 <ChatWindow />
             </el-main>
@@ -20,34 +22,16 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import SideBar from './SideBar.vue';
-import ContactList from './ContactList.vue';
+import SessionList from './SessionList.vue';
 import ChatWindow from './ChatWindow.vue';
 import { useChatStore } from '../stores/chat';
-import { useUserStore } from '../stores/user';
-import apiClient from '../services/api';
+import AddressBook from './AddressBook.vue'
 
 const chatStore = useChatStore();
-const userStore = useUserStore();
-
-async function fetchContacts() {
-    if (!userStore.userInfo) return;
-    try {
-        // 调用我们之前在后端写的获取联系人列表API
-        const response = await apiClient.get('/api/contact/list', {
-            params: {
-                userId: userStore.userInfo.id
-            }
-        });
-        // 将获取到的联系人列表存入 pinia
-        chatStore.setContacts(response.data);
-    } catch (error) {
-        console.error('获取联系人列表失败:', error);
-    }
-}
 
 // 在组件挂载后，立即获取联系人列表
 onMounted(() => {
-    fetchContacts();
+    chatStore.fetchContacts();
 });
 </script>
 

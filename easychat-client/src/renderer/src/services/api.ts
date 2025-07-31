@@ -3,7 +3,7 @@ import { useUserStore } from '../stores/user'
 
 const apiClient = axios.create({
     baseURL: 'https://api.chirpchump.xyz', // 设置基础 URL
-    timeout: 10000,
+    timeout: 60000,
 });
 
 // 创建一个请求拦截器

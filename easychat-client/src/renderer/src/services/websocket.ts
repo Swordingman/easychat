@@ -1,6 +1,6 @@
 import { useUserStore } from '../stores/user'
 import { ElMessage, ElNotification } from 'element-plus'
-import { useChatStore } from '@renderer/stores/chat'
+import { useChatStore, type Message } from '../stores/chat'
 
 let ws: WebSocket | null = null
 let heartBeatTimer: number | null = null
@@ -75,25 +75,31 @@ function handleOpen() {
 }
 
 function handleMessage(event: MessageEvent) {
-    const messageData = JSON.parse(event.data)
-    console.log('收到服务器消息:', messageData)
+    // 1. 先把数据解析成一个通用的对象
+    const messageData: Record<string, any> = JSON.parse(event.data);
+    console.log('收到服务器消息:', messageData);
+    const chatStore = useChatStore();
 
-    const chatStore = useChatStore()
+    // 2. 现在可以安全地访问任何可能的字段了
+    const messageTypeField = messageData.type || messageData.messageType;
 
-    switch(messageData.type || messageData.messageType) {
-        case 'HEARTBEAT_PONG':
-            console.log('收到心跳响应，心跳正常。')
-            break;
-        case 'ERROR':
-            console.error('收到错误消息:', messageData.content)
-            ElMessage.error(messageData.content || '服务器发生错误，请稍后再试。')
-            break;
-        case 'TEXT':
-            default:
-                chatStore.addMessage(messageData)
-                break;
+    if (messageTypeField === 'HEARTBEAT_PONG') {
+        console.log('收到心跳响应，心跳正常。');
+    } else if (messageTypeField === 'ERROR') {
+        console.error('收到错误消息:', messageData.content);
+        ElMessage.error(messageData.content || '服务器发生错误，请稍后再试。');
+    }
+    // 3. 如果它有 senderId，我们就认为它是一条聊天消息
+    else if (messageData.senderId) {
+        // a. 在这里，我们才把它当作 Message 类型来处理
+        const chatMessage = messageData as Message;
+        chatStore.addMessage(chatMessage);
+    }
+    else {
+        console.warn("收到未知类型的WebSocket消息:", messageData);
     }
 }
+
 
 function handleClose(event: CloseEvent) {
     console.log(`WebSocket 连接已关闭。Code: ${event.code}, Reason: ${event.reason}`)

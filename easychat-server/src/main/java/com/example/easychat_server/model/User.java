@@ -40,6 +40,9 @@ public class User {
     @CreationTimestamp
     private LocalDateTime createTime;
 
+    @Column(name = "easychat_id", unique = true, nullable = false, length = 50)
+    private String easychatId;
+
     // JPA 需要一个无参构造函数
     public User() {
     }
@@ -51,18 +54,10 @@ public class User {
      * @return 完整的头像URL
      */
     public String getFullAvatarUrl() {
-        // 如果 avatar 字段本身已经是 http 开头，则直接返回
-        if (this.avatar != null && this.avatar.startsWith("http")) {
-            return this.avatar;
-        }
-        // 如果 avatar 是相对路径，则拼接上服务器地址
         if (this.avatar != null && !this.avatar.isEmpty()) {
-            // 在普通的Bean中获取当前请求的地址会比较复杂，我们先用一个硬编码的地址
-            // 后续可以优化为从配置文件读取
-            String baseUrl = "http://localhost:8080";
-            return baseUrl + this.avatar;
+            return this.avatar; // 直接返回数据库里的值
         }
-        // 如果没有头像，可以返回一个默认头像的 URL
+        // 如果 avatar 是 null 或空，返回一个默认头像
         return "https://i.pravatar.cc/150?u=" + this.username;
     }
 

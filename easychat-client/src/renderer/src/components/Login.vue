@@ -16,8 +16,8 @@
                         ref="loginFormRef"
                         label-width="80px"
                         :rules="loginRules">
-                        <el-form-item label="用户名" prop="username">
-                            <el-input v-model="loginForm.username" placeholder="请输入用户名"></el-input>
+                        <el-form-item label="账号" prop="easychatId">
+                            <el-input v-model="loginForm.easychatId" placeholder="请输入easychat账号"></el-input>
                         </el-form-item>
                         <el-form-item label="密码" prop="password">
                             <el-input type="password" v-model="loginForm.password" placeholder="请输入密码" show-password></el-input>
@@ -58,7 +58,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import axios from 'axios'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import apiClient from '../services/api'
 
@@ -71,13 +71,13 @@ const activeTab = ref('login') // 'login' 或 'register'
 
 // 登录表单数据
 const loginForm = reactive({
-    username: '',
+    easychatId: '',
     password: ''
 })
 
 
 const loginRules = reactive<FormRules>({
-    username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+    easychatId: [{ required: true, message: '请输入easychat账号', trigger: 'blur' }],
     password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 })
 
@@ -147,11 +147,25 @@ const handleRegister = async () => {
                 // 发送 POST 请求到后端注册 API
                 const response = await apiClient.post('/api/user/register', registerForm)
 
-                // 注册成功
-                console.log('注册成功:', response.data)
-                ElMessage.success('注册成功！请切换到登录页进行登录。')
-                // 自动切换到登录 tab
-                activeTab.value = 'login'
+                const newEasychatId = response.data.easychatId;
+                await ElMessageBox.alert(
+                    `恭喜你，注册成功！<br/>你的 EasyChat 号是: <strong>${newEasychatId}</strong><br/>请牢记此号码，它是你唯一的登录凭证。`,
+                    '注册成功',
+                    {
+                        confirmButtonText: '好的，去登录',
+                        // dangerouslyUseHTMLString 允许我们在消息中使用 HTML 标签
+                        dangerouslyUseHTMLString: true,
+                        type: 'success',
+                    }
+                );
+
+                // 4. 当用户点击“好的，去登录”按钮后，执行这里的代码
+                // a. 自动填充登录表单
+                loginForm.easychatId = newEasychatId;
+                loginForm.password = ''; // 清空密码框，等待用户输入
+
+                // b. 自动切换到登录标签页
+                activeTab.value = 'login';
             } catch (error: any) {
                 // 注册失败
                 if (axios.isAxiosError(error)) {

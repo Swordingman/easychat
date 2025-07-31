@@ -8,8 +8,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController // 声明这是一个 RESTful风格的 Controller，所有方法默认返回 JSON
@@ -39,9 +41,9 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody LoginDto loginDto) {
         try {
-            String token = userService.login(loginDto.getUsername(), loginDto.getPassword());
+            String token = userService.login(loginDto.getEasychatId(), loginDto.getPassword());
 
-            User user = userService.findByUsername(loginDto.getUsername());
+            User user = userService.findByEasychatId(loginDto.getEasychatId());
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("token", token);
@@ -51,6 +53,7 @@ public class UserController {
             userInfo.put("username", user.getUsername());
             userInfo.put("nickname", user.getNickname());
             userInfo.put("avatar", user.getAvatar());
+            userInfo.put("easychatId", user.getEasychatId());
             responseData.put("userInfo", userInfo);
 
             return ResponseEntity.ok(responseData);
@@ -69,5 +72,14 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<User>> searchUsers(@RequestParam String query, Authentication authentication) {
+        String currentUsername = authentication.getName();
+        User currentUser = userService.findByEasychatId(currentUsername);
+        List<User> users = userService.searchUsers(query, currentUser.getId());
+        users.forEach(user -> user.setPassword(null));
+        return ResponseEntity.ok(users);
     }
 }

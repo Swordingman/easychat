@@ -10,6 +10,7 @@ public class ContactDto {
     private String username;
     private String nickname;
     private String avatar;
+    private String easychatId;
 
     // 额外添加的会话信息
     private String lastMessage;

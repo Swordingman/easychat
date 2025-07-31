@@ -87,8 +87,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private void handlePrivateChatMessage(Long senderId, WebSocketMessage webSocketMessage) throws IOException {
         Long receiverId = webSocketMessage.getReceiverId();
         String content = webSocketMessage.getContent();
+        String messageType = webSocketMessage.getMessageType();
 
-        if (receiverId == null || content == null || content.isEmpty()) {
+        if (receiverId == null || content == null || content.isEmpty() || messageType == null || messageType.isEmpty()) {
             log.warn("无效的私聊消息: {}", webSocketMessage);
             return;
         }
@@ -98,7 +99,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         messageToSave.setSenderId(senderId);
         messageToSave.setReceiverId(receiverId);
         messageToSave.setContent(content);
-        messageToSave.setMessageType("TEXT"); // 目前只处理文本消息
+        messageToSave.setMessageType(messageType); // 目前只处理文本消息
         Message savedMessage = messageService.saveMessage(messageToSave);
         log.info("消息已存入数据库: {}", savedMessage);
 

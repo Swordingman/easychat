@@ -6,6 +6,9 @@
         @close="handleClose"
     >
         <el-form :model="form" label-width="80px" ref="formRef">
+            <el-form-item label="账号">
+                <el-input :model-value="userStore.userInfo?.easychatId" readonly />
+            </el-form-item>
             <el-form-item label="头像">
                 <!--
                   action: 指定上传的服务器地址
@@ -15,7 +18,7 @@
                 -->
                 <el-upload
                     class="avatar-uploader"
-                    action="http://localhost:8080/api/file/upload"
+                    :action="uploadActionUrl"
                     :headers="uploadHeaders"
                     :show-file-list="false"
                     :on-success="handleAvatarSuccess"
@@ -61,12 +64,15 @@ const form = reactive({
 });
 const formRef = ref<FormInstance>();
 
+const uploadActionUrl = computed(() => {
+    return `${apiClient.defaults.baseURL}/api/file/upload`;
+});
+
 // 头像上传成功回调
-const handleAvatarSuccess: UploadProps['onSuccess'] = (response, uploadFile) => {
-    // response.url 是我们后端返回的文件访问路径
-    // 注意：由于我们后端返回的是相对路径，这里需要拼接成完整 URL 才能预览
-    const newAvatarUrl = 'http://localhost:8080' + response.url;
-    form.avatar = newAvatarUrl;
+// UserProfileDialog.vue
+const handleAvatarSuccess: UploadProps['onSuccess'] = (response) => {
+    // response.url 就是完整的 https://... OSS URL
+    form.avatar = response.url;
     ElMessage.success('头像上传成功!');
 };
 
@@ -102,7 +108,7 @@ const handleSubmit = async () => {
         const updateData = {
             nickname: form.nickname,
             // 注意：传给后端的 avatar 路径不应该包含域名部分
-            avatar: new URL(form.avatar).pathname
+            avatar: form.avatar
         };
 
         console.log("准备提交的数据 (updateData):", JSON.stringify(updateData, null, 2));
@@ -146,8 +152,7 @@ defineExpose({
         // 1. 在显示对话框之前，使用 Pinia store 中最新的用户信息来填充表单
         if (userStore.userInfo) {
             form.nickname = userStore.userInfo.nickname;
-            // 使用 fullAvatarUrl 来保证显示的是带域名的完整路径
-            form.avatar = userStore.userInfo.fullAvatarUrl;
+            form.avatar = userStore.userInfo.avatar;
         } else {
             // 如果因为某些原因无法获取用户信息，可以给个默认值或错误提示
             ElMessage.error("无法获取当前用户信息！");

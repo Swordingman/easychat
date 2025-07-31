@@ -2,6 +2,13 @@
     <div class="contact-list-container">
         <div class="search-bar">
             <el-input placeholder="搜索" :prefix-icon="Search" />
+            <!-- 1. 新增的“添加好友”按钮 -->
+            <el-button
+                :icon="Plus"
+                circle
+                class="add-btn"
+                @click="openAddContactDialog"
+            />
         </div>
         <el-scrollbar class="contact-scroll">
             <div
@@ -18,14 +25,24 @@
                 </div>
             </div>
         </el-scrollbar>
+
+        <AddContactDialog ref="addContactDialogRef" />
     </div>
 </template>
 
 <script setup lang="ts">
-import { Search } from '@element-plus/icons-vue'
+import { Plus, Search } from '@element-plus/icons-vue'
 import { useChatStore } from '../stores/chat';
+import AddContactDialog from './AddContactDialog.vue';
+import { ref } from 'vue'
 
 const chatStore = useChatStore();
+
+const addContactDialogRef = ref<InstanceType<typeof AddContactDialog> | null>(null);
+
+function openAddContactDialog() {
+    addContactDialogRef.value?.open();
+}
 
 function handleSelectContact(contactId: number) {
     chatStore.setActiveContactId(contactId);
@@ -42,8 +59,13 @@ function handleSelectContact(contactId: number) {
     flex-direction: column;
 }
 .search-bar {
+    display: flex; /* 使用 flex 布局让输入框和按钮在一行 */
+    align-items: center; /* 垂直居中 */
     padding: 10px;
     border-bottom: 1px solid #e0e0e0;
+}
+.add-btn {
+    margin-left: 8px; /* 给按钮一点左边距 */
 }
 .contact-scroll {
     flex-grow: 1;

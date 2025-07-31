@@ -29,17 +29,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()).cors(cors -> {})
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 关键：在所有规则的最前面，无条件放行所有 OPTIONS 请求
+                        // --- 规则1：无条件放行的路径 ---
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // --- 保持你现有的规则 ---
                         .requestMatchers("/api/user/register", "/api/user/login").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
-                        .anyRequest().authenticated()
+
+                        // --- 规则2：所有其他的 /api/** 路径都需要认证 ---
+                        // 我们把这条规则明确写出来，而不是依赖 anyRequest()
+                        .requestMatchers("/api/**").authenticated()
+
+                        // --- 规则3：最后的兜底规则 ---
+                        .anyRequest().permitAll() // 或者 .denyAll()，取决于你的安全策略
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

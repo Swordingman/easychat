@@ -10,8 +10,10 @@ import Login from './components/Login.vue'
 import Main from './components/Main.vue'
 import { connectWebSocket, closeWebSocket } from './services/websocket'
 import { ElMessage } from 'element-plus'
+import { useChatStore} from './stores/chat'
 
-const userStore = useUserStore()
+const userStore = useUserStore();
+const chatStore = useChatStore();
 
 watch(
     () => userStore.isLoggedIn,
@@ -19,9 +21,11 @@ watch(
         if (newIsLoggedIn) {
             console.log('用户已登录，正在连接 WebSocket...');
             connectWebSocket();
+            chatStore.startPollingRequests();
         } else {
             console.log('用户已登出，正在断开 WebSocket...');
             closeWebSocket();
+            chatStore.stopPollingRequests();
         }
     },
     {

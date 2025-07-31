@@ -1,15 +1,31 @@
 <template>
     <div class="sidebar-container">
         <div class="user-avatar" @click="openProfileDialog">
-            <el-avatar :size="36" :src="userStore.userInfo?.fullAvatarUrl" />
+            <el-avatar :size="36" :src="userStore.userInfo?.avatar" />
         </div>
         <div class="nav-icons">
-            <div class="nav-icon active">
-                <el-icon><ChatDotRound /></el-icon>
+            <!-- 聊天图标 -->
+            <div
+                class="nav-icon"
+                :class="{ active: chatStore.activeView === 'chat' }"
+                @click="chatStore.setActiveView('chat')"
+            >
+                <el-tooltip content="聊天" placement="right">
+                    <el-icon><ChatDotRound /></el-icon>
+                </el-tooltip>
             </div>
-            <div class="nav-icon">
-                <el-icon><User /></el-icon>
-            </div>
+            <!-- 通讯录图标 -->
+            <el-badge :is-dot="chatStore.pendingRequestsCount > 0" class="nav-badge">
+                <div
+                    class="nav-icon"
+                    :class="{ active: chatStore.activeView === 'contacts' }"
+                    @click="chatStore.setActiveView('contacts')"
+                >
+                    <el-tooltip content="通讯录" placement="right">
+                        <el-icon><User /></el-icon>
+                    </el-tooltip>
+                </div>
+            </el-badge>
         </div>
         <div class="settings-icon">
             <el-popover
@@ -39,7 +55,7 @@
 
 <script setup lang="ts">
 import { useUserStore } from '../stores/user';
-import { useChatStore } from '@renderer/stores/chat'
+import { useChatStore } from '../stores/chat'
 import { ElMessageBox } from 'element-plus';
 import { ref } from 'vue';
 import UserProfileDialog from './UserProfileDialog.vue';
@@ -126,5 +142,8 @@ function handleLogout() {
 }
 .user-avatar:hover {
     transform: scale(1.1);
+}
+.nav-badge {
+    display: block; /* 或者其他合适的样式 */
 }
 </style>

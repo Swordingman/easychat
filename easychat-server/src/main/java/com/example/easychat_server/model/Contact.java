@@ -19,7 +19,8 @@ public class Contact {
     @Column(name = "user_id_b", nullable = false)
     private Long userIdB;
 
-    // 可以在这里加一个 status 字段，如 "FRIENDS", "BLOCKED" 等
+    @Column(nullable = false, length = 20)
+    private String status;
 
     @Column(name = "create_time", updatable = false)
     @CreationTimestamp
