@@ -5,15 +5,17 @@
         </div>
         <div class="nav-icons">
             <!-- 聊天图标 -->
-            <div
-                class="nav-icon"
-                :class="{ active: chatStore.activeView === 'chat' }"
-                @click="chatStore.setActiveView('chat')"
-            >
-                <el-tooltip content="聊天" placement="right">
-                    <el-icon><ChatDotRound /></el-icon>
-                </el-tooltip>
-            </div>
+            <el-badge :is-dot="chatStore.totalUnreadCount > 0" class="nav-badge">
+                <div
+                    class="nav-icon"
+                    :class="{ active: chatStore.activeView === 'chat' }"
+                    @click="chatStore.setActiveView('chat')"
+                >
+                    <el-tooltip content="聊天" placement="right">
+                        <el-icon><ChatDotRound /></el-icon>
+                    </el-tooltip>
+                </div>
+            </el-badge>
             <!-- 通讯录图标 -->
             <el-badge :is-dot="chatStore.pendingRequestsCount > 0" class="nav-badge">
                 <div
@@ -56,7 +58,7 @@
 <script setup lang="ts">
 import { useUserStore } from '../stores/user';
 import { useChatStore } from '../stores/chat'
-import { ElMessageBox } from 'element-plus';
+import { ElMessageBox, ElMessage } from 'element-plus';
 import { ref } from 'vue';
 import UserProfileDialog from './UserProfileDialog.vue';
 

@@ -19,4 +19,8 @@ public class MessageService {
     public List<Message> getConversation(Long userId1, Long userId2) {
         return messageRepository.findConversationMessages(userId1, userId2);
     }
+
+    public List<Message> getGroupConversation(Long groupId) {
+        return messageRepository.findByReceiverGroupIdOrderByCreateTimeAsc(groupId);
+    }
 }

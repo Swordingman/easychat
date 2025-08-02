@@ -1,100 +1,114 @@
 <template>
-    <div class="contact-list-container">
+    <div class="session-list-container">
         <div class="search-bar">
             <el-input placeholder="搜索" :prefix-icon="Search" />
-            <!-- 1. 新增的“添加好友”按钮 -->
-            <el-button
-                :icon="Plus"
-                circle
-                class="add-btn"
-                @click="openAddContactDialog"
-            />
         </div>
-        <el-scrollbar class="contact-scroll">
+        <el-scrollbar class="session-scroll">
+            <div v-if="sortedSessions.length === 0">
+                <el-empty description="暂无会话" :image-size="80" />
+            </div>
             <div
-                v-for="contact in chatStore.contacts"
-                :key="contact.id"
-                class="contact-item"
-                :class="{ active: contact.id === chatStore.activeContactId }"
-                @click="handleSelectContact(contact.id)"
+                v-for="session in sortedSessions"
+                :key="session.id"
+                class="session-item"
+                :class="{ active: session.id === chatStore.activeSessionId }"
+                @click="handleSelectSession(session)"
             >
-                <el-avatar :size="36" :src="contact.avatar" />
-                <div class="contact-info">
-                    <div class="nickname">{{ contact.nickname }}</div>
-                    <div class="last-message">{{ contact.lastMessage }}</div>
+                <el-badge
+                    :value="chatStore.unreadCounts[session.id]"
+                    :max="99"
+                    :hidden="!chatStore.unreadCounts[session.id] || chatStore.unreadCounts[session.id] === 0"
+                    class="unread-badge"
+                >
+                    <el-avatar :size="40" :src="session.avatar" :shape="session.type === 'GROUP' ? 'square' : 'circle'" />
+                </el-badge>
+
+                <div class="session-info">
+                    <div class="nickname">{{ session.name }}</div>
+                    <div class="last-message">
+                        {{ session.formattedLastMessage || '暂无消息' }}
+                    </div>
                 </div>
             </div>
         </el-scrollbar>
-
-        <AddContactDialog ref="addContactDialogRef" />
     </div>
 </template>
 
 <script setup lang="ts">
-import { Plus, Search } from '@element-plus/icons-vue'
-import { useChatStore } from '../stores/chat';
-import AddContactDialog from './AddContactDialog.vue';
-import { ref } from 'vue'
+import { computed } from 'vue'
+import { Search } from '@element-plus/icons-vue'
+import { useChatStore, type Session } from '../stores/chat'
 
-const chatStore = useChatStore();
+const chatStore = useChatStore()
 
-const addContactDialogRef = ref<InstanceType<typeof AddContactDialog> | null>(null);
+// 创建一个计算属性，用于对会话列表进行实时排序
+const sortedSessions = computed(() => {
+    return [...chatStore.sessions].sort((a, b) => {
+        const lastMsgA = chatStore.getLastMessage(a.id);
+        const lastMsgB = chatStore.getLastMessage(b.id);
 
-function openAddContactDialog() {
-    addContactDialogRef.value?.open();
-}
+        const timeA = lastMsgA ? new Date(lastMsgA.createTime).getTime() : (a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0);
+        const timeB = lastMsgB ? new Date(lastMsgB.createTime).getTime() : (b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0);
 
-function handleSelectContact(contactId: number) {
-    chatStore.setActiveContactId(contactId);
-    chatStore.loadHistoryMessages(contactId);
+        return timeB - timeA;
+    });
+});
+
+
+function handleSelectSession(session: Session) {
+    chatStore.setActiveSessionId(session.id)
+    // 加载历史消息的职责，已经移交给 ChatWindow.vue 的 watch 监听器
 }
 </script>
 
 <style scoped>
-.contact-list-container {
-    width: 250px;
+.session-list-container {
+    width: 249px;
     height: 100%;
-    background: #fafafa;
+    background: #f0f2f5;
     display: flex;
     flex-direction: column;
+    border-right: 1px solid #dcdfe6;
 }
 .search-bar {
-    display: flex; /* 使用 flex 布局让输入框和按钮在一行 */
-    align-items: center; /* 垂直居中 */
     padding: 10px;
-    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
 }
-.add-btn {
-    margin-left: 8px; /* 给按钮一点左边距 */
-}
-.contact-scroll {
+.session-scroll {
     flex-grow: 1;
 }
-.contact-item {
+.session-item {
     display: flex;
     align-items: center;
-    padding: 10px;
+    padding: 12px;
     cursor: pointer;
+    transition: background-color 0.2s;
 }
-.contact-item:hover {
-    background-color: #f0f0f0;
+.session-item:hover {
+    background-color: #e4e7ed;
 }
-.contact-item.active {
-    background-color: #e0e0e0;
+.session-item.active {
+    background-color: #c8c9cc;
 }
-.contact-info {
-    margin-left: 10px;
+.session-info {
+    margin-left: 12px;
     flex-grow: 1;
     overflow: hidden;
 }
 .nickname {
     font-size: 14px;
+    color: #303133;
+    white-space: nowrap;
 }
 .last-message {
     font-size: 12px;
-    color: #999;
+    color: #909399;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+:deep(.unread-badge .el-badge__content) {
+    top: 4px;
+    right: 8px;
 }
 </style>

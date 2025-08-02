@@ -1,7 +1,9 @@
 package com.example.easychat_server.repository;
 
 import com.example.easychat_server.model.Contact;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -40,4 +42,14 @@ public interface ContactRepository extends JpaRepository<Contact, Long> {
      */
     @Query("SELECT c FROM Contact c WHERE c.status = :status AND (c.userIdA = :userId OR c.userIdB = :userId)")
     List<Contact> findAllFriends(@Param("userId") Long userId, @Param("status") String status);
+
+    /**
+     * 删除两个用户之间的关系
+     * @param userId1 用户1的ID
+     * @param userId2 用户2的ID
+     */
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Contact c WHERE (c.userIdA = :userId1 AND c.userIdB = :userId2) OR (c.userIdA = :userId2 AND c.userIdB = :userId1)")
+    void deleteRelation(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
 }

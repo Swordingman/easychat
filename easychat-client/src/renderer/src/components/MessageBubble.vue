@@ -41,18 +41,7 @@
 
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
-
-// 假设 Message 接口定义在某个地方
-interface Message {
-    id: number;
-    senderId: number;
-    receiverId: number;
-    content: string;
-    messageType: 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE';
-    createTime: string;
-    status: 'sending' | 'failed' | 'sent';
-    localUrl?: string;
-}
+import { type Message } from '../stores/chat'
 
 const props = defineProps<{ message: Message }>();
 const { message } = toRefs(props);
@@ -60,12 +49,14 @@ const { message } = toRefs(props);
 // 计算属性，用于解析 content 里的 JSON 字符串
 // 只有在消息不是 TEXT 类型时才执行解析
 const parsedContent = computed(() => {
-    if (message.value.messageType !== 'TEXT' && message.value.content) {
+    // 【核心修正】只有在明确是这几种类型时，才去尝试解析 JSON
+    const parsableTypes = ['IMAGE', 'VIDEO', 'FILE'];
+    if (parsableTypes.includes(message.value.messageType) && message.value.content) {
         try {
             return JSON.parse(message.value.content);
         } catch (e) {
-            console.error('解析消息内容失败:', e);
-            return {};
+            console.error('解析消息内容失败:', message.value.content, e);
+            return { url: '', name: '文件已损坏', size: 0 }; // 返回一个默认对象，防止模板报错
         }
     }
     return null;

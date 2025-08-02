@@ -1,7 +1,9 @@
 package com.example.easychat_server.websocket;
 
 import com.example.easychat_server.dto.WebSocketMessage;
+import com.example.easychat_server.model.GroupMember;
 import com.example.easychat_server.model.Message;
+import com.example.easychat_server.repository.GroupMemberRepository;
 import com.example.easychat_server.service.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -14,6 +16,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,10 +33,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final MessageService messageService;
     private final ObjectMapper objectMapper;
 
+    private final GroupMemberRepository groupMemberRepository;
+
     @Autowired
-    public ChatWebSocketHandler(MessageService messageService, ObjectMapper objectMapper) {
+    public ChatWebSocketHandler(MessageService messageService, ObjectMapper objectMapper, GroupMemberRepository groupMemberRepository) {
         this.messageService = messageService;
         this.objectMapper = objectMapper;
+        this.groupMemberRepository = groupMemberRepository;
     }
 
     /**
@@ -69,6 +75,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 case "PRIVATE_CHAT":
                     handlePrivateChatMessage(senderId, webSocketMessage);
                     break;
+                case "GROUP_CHAT":
+                    handleGroupChatMessage(senderId, webSocketMessage);
+                    break;
                 case "HEARTBEAT_PING":
                     // 收到心跳ping，回复一个pong，保持连接
                     session.sendMessage(new TextMessage("{\"type\":\"HEARTBEAT_PONG\"}"));
@@ -100,6 +109,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         messageToSave.setReceiverId(receiverId);
         messageToSave.setContent(content);
         messageToSave.setMessageType(messageType); // 目前只处理文本消息
+        messageToSave.setChatType("PRIVATE");
         Message savedMessage = messageService.saveMessage(messageToSave);
         log.info("消息已存入数据库: {}", savedMessage);
 
@@ -121,6 +131,46 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         WebSocketSession senderSession = ONLINE_USERS.get(senderId);
         if (senderSession != null && senderSession.isOpen()) {
             senderSession.sendMessage(new TextMessage(messageToSend));
+        }
+    }
+
+    private void handleGroupChatMessage(Long senderId, WebSocketMessage webSocketMessage) throws IOException {
+        Long receiverGroupId = webSocketMessage.getReceiverGroupId();
+        String content = webSocketMessage.getContent();
+        String messageType = webSocketMessage.getMessageType();
+
+        if (receiverGroupId == null || content == null || messageType == null) {
+            log.warn("无效的群聊消息: {}", webSocketMessage);
+            return;
+        }
+
+        // 1. 创建 Message 实体并存入数据库
+        Message messageToSave = new Message();
+        messageToSave.setChatType("GROUP");
+        messageToSave.setSenderId(senderId);
+        messageToSave.setReceiverGroupId(receiverGroupId);
+        messageToSave.setContent(content);
+        messageToSave.setMessageType(messageType);
+        Message savedMessage = messageService.saveMessage(messageToSave);
+        log.info("群聊消息已存入数据库: {}", savedMessage);
+
+        // 2. 将保存后的完整消息，序列化为 JSON 字符串准备广播
+        String messageToSend = objectMapper.writeValueAsString(savedMessage);
+
+        // 3. 查找该群的所有成员
+        List<GroupMember> members = groupMemberRepository.findByGroupId(receiverGroupId);
+
+        // 4. 【核心广播逻辑】遍历所有成员，向在线的成员发送消息
+        for (GroupMember member : members) {
+            Long memberId = member.getUserId();
+            WebSocketSession memberSession = ONLINE_USERS.get(memberId);
+
+            // 如果成员在线，并且不是发送者自己（因为发送者自己已经通过前端渲染了）
+            // 当然，把消息也发回给发送者，可以用来做消息同步和确认，我们先发
+            if (memberSession != null && memberSession.isOpen()) {
+                memberSession.sendMessage(new TextMessage(messageToSend));
+                log.info("群聊消息已转发给在线成员: {}", memberId);
+            }
         }
     }
 

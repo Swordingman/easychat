@@ -8,6 +8,7 @@ import org.springframework.web.filter.CorsFilter; // 1. 确保 import 是这个
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import java.util.List;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -25,7 +26,7 @@ public class WebConfig implements WebMvcConfigurer {
         // 2. 创建一个详细的 CORS 配置对象
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true); // 允许发送 Cookie 等凭证
-        config.addAllowedOrigin("http://localhost:5173"); // 允许的前端开发服务器源
+        config.setAllowedOriginPatterns(List.of("http://localhost:*"));
         config.addAllowedHeader("*"); // 允许所有请求头
         config.addAllowedMethod("*"); // 允许所有 HTTP 方法 (GET, POST, PUT, etc.)
         config.setMaxAge(3600L); // 预检请求的缓存时间

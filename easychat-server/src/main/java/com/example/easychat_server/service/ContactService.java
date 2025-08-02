@@ -157,4 +157,13 @@ public class ContactService {
         friends.forEach(f -> f.setPassword(null));
         return friends;
     }
+
+    public void deleteContact(Long userId, Long friendId) {
+        Optional<Contact> relation = contactRepository.findExistingRelation(userId, friendId);
+        if (relation.isEmpty()) {
+            throw new IllegalArgumentException("你们并不是好友关系");
+        }
+
+        contactRepository.deleteRelation(userId, friendId);
+    }
 }

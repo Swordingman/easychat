@@ -73,11 +73,10 @@ const handleSearch = async () => {
 const handleAddContact = async (friendId: number) => {
     try {
         // 注意：后端的 /api/contact/add 接口设计的是接收 friendId 作为 RequestParam
-        const response = await apiClient.post('/api/contact/request', null, {
+        await apiClient.post('/api/contact/request', null, {
             params: { receiverId: friendId }
         });
         ElMessage.success('好友添加成功！');
-        // TODO: 添加成功后，应该刷新左侧的联系人列表
     } catch (error: any) {
         console.error('添加好友失败:', error);
         ElMessage.error(error.response?.data || '添加好友失败，请重试');

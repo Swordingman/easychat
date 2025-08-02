@@ -31,7 +31,7 @@ const chatStore = useChatStore();
 
 // 在组件挂载后，立即获取联系人列表
 onMounted(() => {
-    chatStore.fetchContacts();
+    chatStore.fetchSessions();
 });
 </script>
 

@@ -1,27 +1,29 @@
 <template>
     <div class="chat-window-container">
-        <!-- 未选中联系人时的占位符 -->
-        <div v-if="!chatStore.activeContact" class="placeholder">
+        <!-- 未选中会话时的占位符 -->
+        <div v-if="!activeSession" class="placeholder">
             <el-icon><Promotion /></el-icon>
-            <span>开始聊天吧</span>
+            <span>开启你的 EasyChat 之旅</span>
         </div>
 
         <!-- 聊天窗口 -->
         <template v-else>
             <!-- 头部 -->
             <div class="chat-header">
-                {{ chatStore.activeContact.nickname }}
+                <span class="header-name">{{ activeSession.name }}</span>
+                <el-icon v-if="activeSession.type === 'GROUP'" class="header-icon" @click="openGroupSettings">
+                    <MoreFilled />
+                </el-icon>
             </div>
 
             <!-- 消息区域 -->
             <div class="message-area" ref="messageAreaRef">
                 <el-scrollbar>
                     <div class="message-list">
-                        <div v-for="message in chatStore.activeMessages" :key="message.id" class="message-item-wrapper">
+                        <div v-for="message in activeMessages" :key="message.id || message.tempId" class="message-item-wrapper">
                             <!-- 对方的消息 -->
                             <div v-if="message.senderId !== userStore.userInfo?.id" class="message-item other">
-                                <el-avatar :src="chatStore.activeContact.avatar" class="message-avatar" />
-                                <!-- 1. 消息渲染改造 -->
+                                <el-avatar :src="getSenderAvatar(message.senderId)" class="message-avatar" />
                                 <MessageBubble :message="message" />
                             </div>
                             <!-- 自己的消息 -->
@@ -37,7 +39,6 @@
             <!-- 输入区域 -->
             <div class="input-area">
                 <div class="toolbar">
-                    <!-- 表情包选择器 (无 Tooltip 精简版) -->
                     <el-popover
                         ref="emojiPopoverRef"
                         placement="top-start"
@@ -46,15 +47,12 @@
                         popper-class="emoji-popover"
                     >
                         <template #reference>
-                            <!-- 直接把带 wrapper 的图标作为触发器 -->
                             <div class="icon-wrapper">
                                 <el-icon class="toolbar-icon"><Sugar /></el-icon>
                             </div>
                         </template>
                         <EmojiPicker :native="true" @select="onSelectEmoji" style="width: 100%;" />
                     </el-popover>
-
-                    <!-- 文件选择器 (保留 Tooltip，因为它没有 click 冲突) -->
                     <el-tooltip content="发送文件/图片/视频" placement="top">
                         <div class="icon-wrapper" @click="handleSelectFile">
                             <el-icon class="toolbar-icon"><FolderAdd /></el-icon>
@@ -68,62 +66,144 @@
                     :rows="4"
                     resize="none"
                     placeholder="输入消息，按 Enter 发送"
-                    @keydown.enter.prevent="handleSendMessage"
+                    @keydown.enter.prevent="handleSendTextMessage"
                 />
                 <div class="send-button-wrapper">
-                    <el-button type="primary" @click="handleSendMessage" :disabled="!inputMessage.trim()">发送(S)</el-button>
+                    <el-button type="primary" @click="handleSendTextMessage" :disabled="!inputMessage.trim()">发送(S)</el-button>
                 </div>
             </div>
         </template>
+
+        <input type="file" ref="fileInputRef" style="display: none" @change="onFileSelected" />
     </div>
-    <input
-        type="file"
-        ref="fileInputRef"
-        style="display: none"
-        @change="onFileSelected"
-    />
+
+    <GroupSettingsDrawer ref="groupSettingsDrawerRef" />
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
-import { useChatStore, type Message } from '../stores/chat';
-import { useUserStore } from '../stores/user';
-import { sendMessage as wsSendMessage } from '../services/websocket';
-import { ElMessage, ElLoading } from 'element-plus'
+import { ref, watch, nextTick, computed } from 'vue'
+import { useChatStore, type Message } from '../stores/chat'
+import { useUserStore } from '../stores/user'
+import { sendMessage as wsSendMessage } from '../services/websocket'
 import apiClient from '../services/api'
+import { ElMessage, ElLoading } from 'element-plus'
 import MessageBubble from './MessageBubble.vue'
-import EmojiPicker from 'vue3-emoji-picker';
+import EmojiPicker from 'vue3-emoji-picker'
 import 'vue3-emoji-picker/css'
+import { MoreFilled } from '@element-plus/icons-vue'
+import GroupSettingsDrawer from './GroupSettingsDrawer.vue'
 
-const chatStore = useChatStore();
-const userStore = useUserStore();
+const chatStore = useChatStore()
+const userStore = useUserStore()
 
-const inputMessage = ref('');
-const messageAreaRef = ref<HTMLElement | null>(null);
-const fileInputRef = ref<HTMLInputElement | null>(null);
-const emojiPopoverRef = ref();
+// --- Refs ---
+const inputMessage = ref('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const emojiPopoverRef = ref()
+const messageAreaRef = ref<HTMLElement | null>(null)
+const groupSettingsDrawerRef = ref<InstanceType<typeof GroupSettingsDrawer> | null>(null)
 
-// 点击文件夹图标的触发函数
+// --- Computed Properties ---
+const activeSession = computed(() => chatStore.activeSession)
+const activeMessages = computed(() => chatStore.activeMessages)
+
+// --- Watchers ---
+// 监听激活会话的变化，加载历史消息
+watch(
+    () => chatStore.activeSessionId,
+    (newSessionId) => {
+        if (newSessionId) {
+            const session = chatStore.activeSession;
+            if (session) {
+                if (session.type === 'PRIVATE') {
+                    chatStore.loadHistoryMessages(session.targetId, session.type);
+                } else if (session.type === 'GROUP') {
+                    // 【核心修改】当进入群聊时，同时加载历史消息和群成员
+                    chatStore.loadHistoryMessages(session.targetId, session.type);
+                    chatStore.fetchGroupMembers(session.targetId);
+                }
+            }
+        }
+    },
+    { immediate: true }
+);
+
+// 监听消息列表变化，自动滚动到底部
+watch(
+    activeMessages,
+    () => {
+        nextTick(() => {
+            const scrollContainer = messageAreaRef.value?.querySelector('.el-scrollbar__wrap')
+            if (scrollContainer) {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight
+            }
+        })
+    },
+    { deep: true }
+)
+
+// --- Methods ---
+// (群聊适配) 获取消息发送者的头像
+function getSenderAvatar(senderId: number): string {
+    if (!activeSession.value) return '';
+
+    if (activeSession.value.type === 'PRIVATE') {
+        return activeSession.value.avatar;
+    }
+
+    // 如果是群聊
+    const members = chatStore.groupMembers[activeSession.value.targetId];
+    if (members) {
+        const member = members.find(m => m.memberId === senderId);
+        return member ? member.avatar : ''; // 找到成员头像就返回，找不到返回空
+    }
+
+    return ''; // 如果成员列表还没加载好，也返回空
+}
+
+// 发送文本消息
+function handleSendTextMessage() {
+    if (!inputMessage.value.trim() || !activeSession.value) return;
+
+    const session = activeSession.value;
+
+    // 【核心修正】确保 payload 包含所有必需字段，并正确处理 null
+    const messagePayload = {
+        type: session.type === 'PRIVATE' ? 'PRIVATE_CHAT' : 'GROUP_CHAT',
+        receiverId: session.type === 'PRIVATE' ? session.targetId : null,
+        receiverGroupId: session.type === 'GROUP' ? session.targetId : null,
+        messageType: 'TEXT',
+        content: inputMessage.value,
+        chatType: 'PRIVATE'
+    };
+
+    wsSendMessage(messagePayload);
+    inputMessage.value = '';
+}
+
+// 选择表情
+function onSelectEmoji(emoji: any) {
+    inputMessage.value += emoji.i;
+    if (emojiPopoverRef.value) {
+        emojiPopoverRef.value.hide();
+    }
+}
+
+// 选择文件
 function handleSelectFile() {
     fileInputRef.value?.click();
 }
 
-// 文件被选择后的核心处理函数
+// 文件被选择后的处理
 async function onFileSelected(event: Event) {
+    if (!activeSession.value) return;
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
     if (fileInputRef.value) fileInputRef.value.value = '';
 
-    // 1. 显示一个全屏的“上传中”加载动画
-    const loadingInstance = ElLoading.service({
-        lock: true,
-        text: '文件上传中...',
-        background: 'rgba(0, 0, 0, 0.7)',
-    });
-
+    const loadingInstance = ElLoading.service({ text: '文件上传中...' });
     try {
-        // 2. 上传文件
         const formData = new FormData();
         formData.append('file', file);
         const response = await apiClient.post('/api/file/upload', formData, {
@@ -131,83 +211,45 @@ async function onFileSelected(event: Event) {
         });
 
         const fileUrl = response.data.url;
-
-        // 3. 确定消息类型
         let messageType: Message['messageType'] = 'FILE';
         if (file.type.startsWith('image/')) messageType = 'IMAGE';
         else if (file.type.startsWith('video/')) messageType = 'VIDEO';
 
-        // 4. 构建消息内容和 WebSocket 消息体
         const messageContent = JSON.stringify({
             url: fileUrl,
             name: file.name,
             size: file.size,
         });
 
+        const session = activeSession.value;
         const messagePayload = {
-            type: 'PRIVATE_CHAT',
-            receiverId: chatStore.activeContactId,
-            messageType: messageType,
+            type: session.type === 'PRIVATE' ? 'PRIVATE_CHAT' : 'GROUP_CHAT',
+            receiverId: session.type === 'PRIVATE' ? session.targetId : null,
+            receiverGroupId: session.type === 'GROUP' ? session.targetId : null,
+            messageType: messageType, // messageType 是之前根据文件类型判断得出的
             content: messageContent,
+            chatType: session.type
         };
-
-        // 5. 发送 WebSocket 消息
         wsSendMessage(messagePayload);
 
     } catch (error) {
         console.error('文件上传或发送失败:', error);
         ElMessage.error('文件发送失败，请重试');
     } finally {
-        // 6. 关闭加载动画
         loadingInstance.close();
     }
 }
 
-// 发送消息的处理函数
-function handleSendMessage() {
-    if (!inputMessage.value.trim() || !chatStore.activeContactId) {
-        ElMessage.error('请输入消息内容');
-        return;
-    }
-
-    const messagePayload = {
-        type: 'PRIVATE_CHAT',
-        receiverId: chatStore.activeContactId,
-        messageType: 'TEXT',
-        content: inputMessage.value
-    };
-
-    // 调用 WebSocket 服务发送消息
-    wsSendMessage(messagePayload);
-
-    // 清空输入框
-    inputMessage.value = '';
-}
-
-function onSelectEmoji(emoji: any) {
-    console.log(emoji);
-    // 将表情插入到输入框的当前光标位置
-    // (一个简化的实现是直接追加到末尾)
-    inputMessage.value += emoji.i;
-    if (emojiPopoverRef.value) {
-        emojiPopoverRef.value.hide();
+//群组设置
+function openGroupSettings() {
+    const session = activeSession.value;
+    if ( session && session.type === 'GROUP' ) {
+        const groupSessionData = chatStore.groups.find(g => g.id === session.targetId);
+        if (groupSessionData) {
+            groupSettingsDrawerRef.value?.open(session.targetId);
+        }
     }
 }
-
-// 观察 activeMessages 的变化，当有新消息时自动滚动到底部
-watch(
-    () => chatStore.activeMessages,
-    () => {
-        // nextTick 确保在 DOM 更新后执行滚动操作
-        nextTick(() => {
-            const scrollContainer = messageAreaRef.value?.querySelector('.el-scrollbar__wrap');
-            if (scrollContainer) {
-                scrollContainer.scrollTop = scrollContainer.scrollHeight;
-            }
-        });
-    },
-    { deep: true } // 深度观察，确保数组内部变化也能被检测到
-);
 </script>
 
 <style scoped>
@@ -232,86 +274,81 @@ watch(
     margin-bottom: 20px;
 }
 .chat-header {
-    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 15px 20px;
     border-bottom: 1px solid #e0e0e0;
     font-size: 16px;
-    background-color: #fff;
+    background-color: #f5f5f5;
+}
+.header-icon {
+    cursor: pointer;
+    font-size: 18px;
 }
 .message-area {
     flex-grow: 1;
-    overflow-y: hidden; /* 由 el-scrollbar 控制滚动 */
+    overflow-y: hidden;
 }
 .message-list {
-    padding: 10px;
+    padding: 20px;
 }
 .message-item-wrapper {
     margin-bottom: 15px;
 }
-
 .message-item {
     display: flex;
-    align-items: flex-start; /* 头像和气泡顶部对齐 */
+    align-items: flex-start;
 }
-
-/* 对方的消息，整体靠左 */
 .message-item.other {
     justify-content: flex-start;
 }
-
-.message-item.other :deep(.message-content) {
-    background-color: #ffffff;
-}
-
-/* 自己的消息，整体靠右 */
 .message-item.self {
     justify-content: flex-end;
 }
-
+.message-avatar {
+    margin: 0 10px;
+}
+/* 使用深度选择器为不同来源的消息气泡设置背景色 */
+.message-item.other :deep(.message-content) {
+    background-color: #ffffff;
+}
 .message-item.self :deep(.message-content) {
     background-color: #95ec69;
 }
-
-.message-avatar {
-    /* 给头像一些外边距，把它和气泡隔开 */
-    margin: 0 10px;
-}
 .input-area {
+    flex-shrink: 0;
     border-top: 1px solid #e0e0e0;
     background-color: #ffffff;
 }
-/* 深度选择器，修改 el-input 内部样式 */
-:deep(.input-area ) {
-    border: none;
-    box-shadow: none;
-    padding: 10px;
-}
-.send-button-wrapper {
-    text-align: right;
-    padding: 0 10px 10px;
-}
 .toolbar {
-    padding: 5px 10px;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 5px 15px;
+    display: flex;
+    align-items: center;
 }
 .icon-wrapper {
-    /* 让 div 表现得像一个行内块元素，可以设置大小和边距 */
     display: inline-flex;
-    /* 垂直居中内部的 icon */
     align-items: center;
-    /* 继承父级的光标样式 */
     cursor: pointer;
+    padding: 5px;
 }
 .toolbar-icon {
     font-size: 20px;
-    margin: 0 5px; /* 调整一下间距 */
     color: #606266;
 }
 .toolbar-icon:hover {
     color: var(--el-color-primary);
 }
-.message-file a {
-    text-decoration: none;
-    color: inherit;
+:deep(.input-area .el-textarea__inner) {
+    border: none;
+    box-shadow: none;
+    padding: 0 20px 10px;
+    background-color: transparent;
+}
+.send-button-wrapper {
+    text-align: right;
+    padding: 0 20px 10px;
 }
 </style>
 

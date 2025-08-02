@@ -16,6 +16,9 @@ public class WebSocketMessage {
     /*消息接收者ID (私聊时需要)*/
     private Long receiverId;
 
+    /*消息接收者群组ID (群聊时需要)*/
+    private Long receiverGroupId;
+
     /**
      * 消息文件类型:
      * "IMAGE" - 图片消息

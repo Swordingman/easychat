@@ -6,7 +6,7 @@
         "useDefineForClassFields": true,
         "module": "ESNext",
         // --- 核心修改在这里 ---
-        "moduleResolution": "Bundler", // 或者 "NodeNext"
+        "moduleResolution": "bundler", // 或者 "NodeNext"
         // --------------------
         "lib": ["ESNext", "DOM"],
         "skipLibCheck": true,

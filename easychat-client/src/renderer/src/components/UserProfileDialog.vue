@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { ElMessage, type UploadProps, type FormInstance } from 'element-plus';
 import apiClient from '../services/api';
 import { useUserStore } from '../stores/user';

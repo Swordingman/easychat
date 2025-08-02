@@ -132,7 +132,6 @@ const handleLogin = async () => {
         } else {
             console.log('登录表单验证失败！')
             ElMessage.error('登录表单验证失败！请检查输入内容是否正确。')
-            return false;
         }
     })
 }
@@ -180,7 +179,6 @@ const handleRegister = async () => {
         } else {
             console.log('注册表单验证失败！')
             ElMessage.error('注册表单验证失败！请检查输入内容是否正确。')
-            return false;
         }
     })
 }

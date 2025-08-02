@@ -1,5 +1,5 @@
 import { useUserStore } from '../stores/user'
-import { ElMessage, ElNotification } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useChatStore, type Message } from '../stores/chat'
 
 let ws: WebSocket | null = null
@@ -64,39 +64,38 @@ export function closeWebSocket() {
 
 function handleOpen() {
     console.log('WebSocket 连接成功！')
-    ElNotification({
-        title: '连接成功',
-        message: '已成功连接到聊天服务器！',
-        type: 'success',
-        duration: 2000
-    })
     // 连接成功后，启动心跳
     startHeartBeat()
 }
 
 function handleMessage(event: MessageEvent) {
-    // 1. 先把数据解析成一个通用的对象
-    const messageData: Record<string, any> = JSON.parse(event.data);
-    console.log('收到服务器消息:', messageData);
-    const chatStore = useChatStore();
+    const messageData: Record<string, any> = JSON.parse(event.data)
+    console.log('收到服务器消息:', messageData)
 
-    // 2. 现在可以安全地访问任何可能的字段了
-    const messageTypeField = messageData.type || messageData.messageType;
+    const chatStore = useChatStore()
 
-    if (messageTypeField === 'HEARTBEAT_PONG') {
-        console.log('收到心跳响应，心跳正常。');
-    } else if (messageTypeField === 'ERROR') {
-        console.error('收到错误消息:', messageData.content);
-        ElMessage.error(messageData.content || '服务器发生错误，请稍后再试。');
+    if (messageData.type === 'HEARTBEAT_PONG') {
+        console.log('收到心跳响应，心跳正常。')
+    } else if (messageData.type === 'ERROR') {
+        console.error('收到错误消息:', messageData.content)
+        ElMessage.error(messageData.content || '服务器发生错误')
     }
-    // 3. 如果它有 senderId，我们就认为它是一条聊天消息
     else if (messageData.senderId) {
-        // a. 在这里，我们才把它当作 Message 类型来处理
-        const chatMessage = messageData as Message;
-        chatStore.addMessage(chatMessage);
+        const chatMessage: Message = {
+            id: messageData.id,
+            senderId: messageData.senderId,
+            receiverId: messageData.receiverId,
+            receiverGroupId: messageData.receiverGroupId,
+            content: messageData.content,
+            messageType: messageData.messageType,
+            chatType: messageData.chatType,
+            createTime: messageData.createTime,
+            status: 'sent',
+        }
+        chatStore.addMessage(chatMessage)
     }
     else {
-        console.warn("收到未知类型的WebSocket消息:", messageData);
+        console.warn('收到未知类型的WebSocket消息:', messageData)
     }
 }
 
@@ -128,11 +127,20 @@ function startHeartBeat() {
  * 发送消息
  * @param message
  */
+// websocket.ts
+
 export function sendMessage(message: object) {
     if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(message))
+        console.log("【即将发送的JS对象】:", message);
+        try {
+            const jsonString = JSON.stringify(message);
+            console.log("【序列化后的JSON字符串】:", jsonString);
+            ws.send(jsonString);
+        } catch (error) {
+            console.error("【致命错误】JSON 序列化失败！对象中包含无法序列化的内容！", error);
+            console.error("【问题对象】:", message);
+        }
     } else {
-        console.error('WebSocket 未连接，无法发送消息。')
-        ElMessage.error('聊天服务器未连接，无法发送消息！')
+        ElMessage.error('聊天服务器未连接，无法发送消息！');
     }
 }

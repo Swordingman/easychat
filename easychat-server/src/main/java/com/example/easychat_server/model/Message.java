@@ -17,8 +17,14 @@ public class Message {
     @Column(name = "sender_id", nullable = false)
     private Long senderId;
 
-    @Column(name = "receiver_id", nullable = false)
+    @Column(name = "receiver_id")
     private Long receiverId;
+
+    @Column(nullable = false, length = 20)
+    private String chatType; // "SINGLE", "GROUP"
+
+    @Column(name = "receiver_group_id")
+    private Long receiverGroupId;
 
     @Column(columnDefinition = "TEXT", nullable = false) // 使用 TEXT 类型以存储更长的消息
     private String content;

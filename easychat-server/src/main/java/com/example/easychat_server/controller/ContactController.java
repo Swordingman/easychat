@@ -62,6 +62,17 @@ public class ContactController {
         return ResponseEntity.ok(contactService.getContacts(currentUser.getId()));
     }
 
+    @DeleteMapping
+    public ResponseEntity<?> deleteContact(@RequestParam Long friendId, Authentication authentication) {
+        User currentUser = getCurrentUser(authentication);
+        try {
+            contactService.deleteContact(currentUser.getId(), friendId);
+            return ResponseEntity.ok().body("好友已删除");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     /**
      * 辅助方法：从认证信息中获取当前用户实体
      */

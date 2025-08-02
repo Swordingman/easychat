@@ -25,4 +25,11 @@ public class MessageController {
         List<Message> messages = messageService.getConversation(userId1, userId2);
         return ResponseEntity.ok(messages);
     }
+
+    @GetMapping("/group_conversation")
+    public ResponseEntity<List<Message>> getGroupConversation(@RequestParam Long groupId) {
+        // 安全性说明：在真实项目中，这里应该先验证当前登录用户是否是该群的成员
+        List<Message> messages = messageService.getGroupConversation(groupId);
+        return ResponseEntity.ok(messages);
+    }
 }

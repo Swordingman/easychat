@@ -25,7 +25,7 @@
 import { ref } from 'vue';
 import apiClient from '../services/api';
 import { ElMessage } from 'element-plus';
-import { useChatStore } from '../stores/chat.ts'
+import { useChatStore } from '../stores/chat'
 
 interface RequesterInfo {
     id: number;
@@ -67,7 +67,7 @@ const handleAction = async (requestId: number, action: 'accept' | 'reject') => {
         // 从列表中移除已处理的请求
         requests.value = requests.value.filter(req => req.requestId !== requestId);
         if (action === 'accept') {
-            await chatStore.fetchContacts();
+            await chatStore.fetchSessions();
         }
         await chatStore.fetchPendingRequests();
     } catch (error: any) {
